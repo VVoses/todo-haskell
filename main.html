@@ -1,0 +1,128 @@
+<!-- main.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Todo App</title>
+  <style>
+    .completed {
+      text-decoration: line-through;
+    }
+  </style>
+</head>
+<body>
+  <h1>Todo App</h1>
+  <form action="/todos" method="POST">
+    <label for="todo">Add Todo:</label>
+    <input type="text" id="todo" name="todo" />
+    <input type="submit" value="Add" />
+  </form>
+  <ul id="todo-list">
+    <!-- Todo items will be added dynamically by JavaScript -->
+  </ul>
+
+  <script>
+    function getCurrentTimestamp() {
+      const currentTimestamp = new Date().toLocaleString();
+      return currentTimestamp;
+    }
+
+    function toggleComplete(itemId) {
+      const item = document.getElementById(itemId);
+      item.classList.toggle("completed");
+    }
+
+    function createTodoItem(itemId, content, completed, timestamp) {
+      const li = document.createElement("li");
+      li.id = itemId;
+      li.innerHTML = `
+        <span>${content}</span>
+        <span class="timestamp">${timestamp}</span>
+        <button class="delete-btn">Delete</button>
+      `;
+      
+      if (completed) {
+        li.classList.add("completed");
+      }
+
+      li.addEventListener("click", function(event) {
+        if (event.target.classList.contains("delete-btn")) {
+          event.stopPropagation();
+          deleteTodoItem(itemId);
+        } else {
+          toggleComplete(itemId);
+        }
+      });
+
+      return li;
+    }
+
+    function addTodoItem(todo) {
+      const { id, content, completed, timestamp } = todo;
+      const todoList = document.getElementById("todo-list");
+      const todoItem = createTodoItem(id, content, completed, timestamp);
+      todoList.appendChild(todoItem);
+    }
+
+    function deleteTodoItem(itemId) {
+      fetch(`/todos/${itemId}`, { method: 'DELETE' })
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          console.log(data);
+          const todoItem = document.getElementById(itemId);
+          todoItem.remove();
+        });
+    }
+
+    function fetchTodos() {
+      fetch("/todos")
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          data.forEach(function(todo) {
+            addTodoItem(todo);
+          });
+        });
+    }
+
+    document.getElementById("todo-form").addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const todoInput = document.getElementById("todo");
+      const todoValue = todoInput.value.trim();
+      if (todoValue !== "") {
+        const newTodo = {
+          content: todoValue,
+          completed: false,
+          timestamp: getCurrentTimestamp()
+        };
+
+        fetch("/todos", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(newTodo)
+        })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            console.log(data);
+            addTodoItem({
+              id: data.id,
+              content: newTodo.content,
+              completed: newTodo.completed,
+              timestamp: newTodo.timestamp
+            });
+            todoInput.value = "";
+          });
+      }
+    });
+
+    fetchTodos();
+  </script>
+</body>
+</html>
